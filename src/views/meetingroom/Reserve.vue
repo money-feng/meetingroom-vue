@@ -53,49 +53,45 @@
         </template>
       </el-calendar>
     </el-dialog>
-    <el-card>
-      <el-drawer title="会议室预定记录表" :visible.sync="drawerVisible" @close="closeDrawer" @open="openDrawer"
-        :with-header="false" size="40%">
-        <span class="reserve-title">会议室预定记录</span>
-        <el-table :data="reserveInfosCurrentDate" border stripe>
-          <el-table-column prop="room_name" label="会议室" width="150"></el-table-column>
-          <el-table-column prop="begin_datetime" label="开始时间"></el-table-column>
-          <el-table-column prop="over_datetime" label="结束时间"></el-table-column>
-          <el-table-column prop="meeting_chair" label="主持人"></el-table-column>
-        </el-table>
 
-        <!-- 新增预订的表单部分 -->
+    <el-drawer title="会议室预定记录表" :visible.sync="drawerVisible" @close="closeDrawer" @open="openDrawer"
+      :with-header="false" size="40%">
+      <span class="reserve-title">会议室预定记录</span>
+      <el-table :data="reserveInfosCurrentDate" border stripe>
+        <el-table-column prop="room_name" label="会议室" width="150"></el-table-column>
+        <el-table-column prop="begin_datetime" label="开始时间"></el-table-column>
+        <el-table-column prop="over_datetime" label="结束时间"></el-table-column>
+        <el-table-column prop="meeting_chair" label="主持人"></el-table-column>
+      </el-table>
 
-        <span class="reserve-title">创建会议室预订</span>
-        <el-form ref="form" :model="reserveForm" label-width="80px">
-          <el-form-item label="会议名称">
-            <el-input v-model="reserveForm.name"></el-input>
-          </el-form-item>
-          <el-form-item label="会议主题">
-            <el-input v-model="reserveForm.subject"></el-input>
-          </el-form-item>
-          <el-form-item label="会议时间">
-            <el-time-picker is-range v-model="reserveForm.date1" range-separator="至" start-placeholder="开始时间"
-              end-placeholder="结束时间" placeholder="选择时间范围">
-            </el-time-picker>
-          </el-form-item>
-          <el-form-item label="与会人员">
-            <el-select v-model="selectedUsers" filterable multiple clearable placeholder="请选择">
-              <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="会议备注">
-            <el-input type="textarea" v-model="reserveForm.desc"></el-input>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary">立即创建</el-button>
-            <el-button>取消</el-button>
-          </el-form-item>
-        </el-form>
+      <!-- 新增预订的表单部分 -->
 
-      </el-drawer>
-    </el-card>
+      <span class="reserve-title">创建会议室预订</span>
+      <el-form ref="reserveFormRef" :model="reserveForm" :rules="reserveFormRules" label-width="80px">
+        <el-form-item label="会议主题">
+          <el-input v-model="reserveForm.subject"></el-input>
+        </el-form-item>
+        <el-form-item label="会议时间">
+          <el-time-picker is-range v-model="reserveForm.time" range-separator="至" start-placeholder="开始时间"
+            end-placeholder="结束时间" placeholder="选择时间范围">
+          </el-time-picker>
+        </el-form-item>
+        <el-form-item label="与会人员">
+          <el-select v-model="reserveForm.participants" filterable multiple clearable placeholder="请选择">
+            <el-option v-for="user in users" :key="user.id" :label="user.name" :value="user.id">
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="会议备注">
+          <el-input type="textarea" v-model="reserveForm.remarks"></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="addReserve">立即创建</el-button>
+          <el-button>取消</el-button>
+        </el-form-item>
+      </el-form>
+
+    </el-drawer>
   </div>
 </template>
 
@@ -106,6 +102,11 @@
   export default {
     name: "Reserve",
     data() {
+      // 会议时间验证：时间是否在工作时间内，是否存在冲突，是否在将来时间段，不超过2周
+      var checkTime = (rule, value, callBack) => {
+        console.log(value);
+        callBack(new Error("会议时间不合法"))
+      }
       return {
         meetingRoomLists: [],
         addDialogVisible: false,
@@ -122,13 +123,30 @@
         reserveForm: {
           name: '',
           subject: '',
-          date1: '',
-          date2: '',
+          time: '',
+          begin_datetime: '',
+          over_datetime: '',
           participants: '',
-          desc: '',
+          remarks: '',
+          selectedDate: ''
         },
         users: [],
-        selectedUsers: []
+        // 预订信息验证
+        reserveFormRules: {
+          time: [{
+            required: true,
+            message: "会议时间必填",
+            trigger: "blur"
+          }, {
+            validator: checkTime,
+            trigger: 'blur'
+          }],
+          subject: [{
+            required: true,
+            message: "会议主题必填",
+            trigger: "blur"
+          }]
+        }
       };
     },
     created() {
@@ -165,6 +183,7 @@
           if (status !== 200) return this.handlerNotic(message, "error");
           this.reserveDate = data.date;
           this.reserveInfos = data.infos;
+          this.reserveForm.name = roomid
         });
       },
       // 显示选定日期的预订条目数据
@@ -183,6 +202,59 @@
         this.drawerVisible = true;
         this.reserveInfosCurrentDate = this.reserveInfos ?
           this.reserveInfos[dateTime] : [];
+        this.reserveForm.selectedDate = dateTime
+      },
+      // 提交预订到后台
+      addReserve() {
+        // 处理数据
+        const begin_time = this.reserveForm.time[0]
+        this.reserveForm.begin_datetime = this.reserveForm.selectedDate + " " + begin_time.getHours() + ":" + begin_time
+          .getMinutes() + ":" + begin_time.getSeconds()
+        const over_time = this.reserveForm.time[1]
+        this.reserveForm.over_datetime = this.reserveForm.selectedDate + " " + over_time.getHours() + ":" + over_time
+          .getMinutes() + ":" + over_time.getSeconds()
+        this.reserveForm.participants = this.reserveForm.participants.join(',')
+        // 校验数据
+        this.$refs.reserveFormRef.validate(valid => {
+          console.log(valid);
+          return
+
+        })
+        return
+        // 提交到后台
+        request({
+          method: "post",
+          url: "/reserve/",
+          data: this.reserveForm
+        }).then(res => {
+          const {
+            data,
+            message,
+            status
+          } = res.data
+          if (status !== 200) return this.handlerNotic(message, 'error')
+          this.showReserveCalendarDialog(this.reserveForm.name)
+          this.drawerVisible = false
+          this.reserveForm = {
+            name: '',
+            subject: '',
+            time: '',
+            begin_datetime: '',
+            over_datetime: '',
+            participants: '',
+            remarks: '',
+            selectedDate: ''
+          }
+
+          this.handlerNotic(message, 'success')
+
+        }).catch(err => {
+          console.log(err);
+
+          this.handlerNotic("创建新的预订失败，请联系管理员", 'error');
+
+        })
+
       },
       // 预定义打开的回调函数，获取用户信息
       openDrawer() {
@@ -204,6 +276,7 @@
       // 预订页面关闭的回调函数，清空reserveInfosCurrentDate
       closeDrawer() {
         this.reserveInfosCurrentDate = [];
+
       },
       handlerNotic(message, type) {
         this.$message({

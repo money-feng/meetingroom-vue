@@ -6,7 +6,9 @@ import Welcome from '@/views/Welcome'
 import Users from '@/views/users/Users'
 import Perms from '@/views/perm/Perms'
 import Roles from '@/views/perm/Roles'
-import Reserve from '@/views/meetingroom/Reserve.vue'
+import Reserve from '@/views/meetingroom/Reserve'
+import ReserveMgr from '../views/meetingroom/ReserveMgr'
+import RoomMgr from '../views/meetingroom/RoomMgr'
 
 Vue.use(Router)
 
@@ -45,6 +47,16 @@ const router = new Router({
           path: '/reservations',
           name: 'reserve',
           component: Reserve
+        },
+        {
+          path: '/mgrreverse',
+          name: 'mgrreverse',
+          component: ReserveMgr
+        },
+        {
+          path: '/mgrroom',
+          name: 'mgrroom',
+          component: RoomMgr
         }
       ]
     }

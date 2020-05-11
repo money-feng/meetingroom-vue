@@ -173,7 +173,7 @@
         this.reserveCalendarDialog = true;
         request({
           method: "get",
-          url: "/reserve/" + "?roomid=" + roomid
+          url: "/reserve/" + roomid
         }).then(res => {
           const {
             data,

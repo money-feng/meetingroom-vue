@@ -19,7 +19,7 @@
                 <el-col :span="18">
                   <el-tag closable :type="equipments_type[index]" effect="dark"
                     v-for="(item, index) in scope.row.equipment_name" :key="index"
-                    @close="handleClose(scope.row, index)">
+                    @close="handleDeleteEquipment(scope.row, index)">
                     {{item.name}}
                   </el-tag>
                   <el-input class="input-new-tag" v-if="addEquipmentVisible[scope.$index]" v-model="addEquipmentValue"
@@ -127,9 +127,19 @@
         return datetime[0] + " " + datetime[1].split('.')[0]
       },
       // 删除会议室设备的函数
-      handleClose(infos, index) {
+      handleDeleteEquipment(infos, index) {
         // 提交数据到后台
-        console.log(infos);
+        let equipment = []
+        for (var i = 0; i < infos.equipment_name.length; i++) {
+          equipment[i] = infos.equipment_name[i]
+        }
+        equipment.splice(index, 1)
+        // let equipmentIdList = []
+        // for (var i = 0; i < equipment.length; i++) {
+        //   equipmentIdList[i] = equipment[i].id
+        // }
+        infos.equipment = equipment
+
 
         request({
           method: "put",
@@ -144,7 +154,6 @@
           if (status !== 200) return this.handlerNotic(message, 'error')
           infos.equipment_name.splice(index, 1)
         })
-        return false
       },
 
       addEquipment(index) {
@@ -157,7 +166,19 @@
       handleAddEquipmentInputConfirm(infos) {
         let inputValue = this.addEquipmentValue;
         if (inputValue) {
-          this.meetingRoomLists[infos.$index].equipment_name.push(inputValue);
+
+          request({
+            method: 'put',
+            url: '/meeting/' + infos.id,
+            data: infos
+          }).then(res => {
+            console.log(res);
+            this.meetingRoomLists[infos.$index].equipment_name.push({
+              'id': '',
+              'name': inputValue
+            });
+          })
+
         }
         this.$set(this.addEquipmentVisible, infos.$index, false)
         this.addEquipmentValue = '';

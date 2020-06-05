@@ -22,11 +22,7 @@
                     @close="handleDeleteEquipment(scope.row, index)">
                     {{item.name}}
                   </el-tag>
-                  <el-input class="input-new-tag" v-if="addEquipmentVisible[scope.$index]" v-model="addEquipmentValue"
-                    ref="addEquipmentRef" size="small" @keyup.enter.native="handleAddEquipmentInputConfirm(scope)"
-                    @blur.native.capture="handleAddEquipmentInputConfirm(scope)">
-                  </el-input>
-                  <el-button v-else class="button-new-tag" size="small" @click="addEquipment(scope.$index)">添加设备
+                  <el-button class="button-new-tag" size="small" @click="addEquipment(scope)">添加设备
                   </el-button>
                 </el-col>
 
@@ -48,6 +44,10 @@
         <el-table-column prop="manager" label="录入者"></el-table-column>
       </el-table>
     </el-card>
+
+    <el-tree :data="meetingRoomEquipment" show-checkbox node-key="id" :default-expanded-keys="[2, 3]"
+      :default-checked-keys="[5]" :props="defaultProps">
+    </el-tree>
   </div>
 </template>
 
@@ -88,8 +88,12 @@
           23: 'default',
 
         },
-        addEquipmentVisible: [],
-        addEquipmentValue: ''
+        // addEquipmentVisible: [],
+        // addEquipmentValue: '',
+        meetingRoomEquipment: [],
+        defaultProps: {
+          label: 'name'
+        }
       }
     },
     created() {
@@ -108,9 +112,9 @@
           } = res.data
           if (status !== 200) return this.handlerNotic(message, 'error')
           this.meetingRoomLists = data
-          for (var index = 0; index < this.meetingRoomLists.length; index++) {
-            this.addEquipmentVisible[index] = false
-          }
+          // for (var index = 0; index < this.meetingRoomLists.length; index++) {
+          //   this.addEquipmentVisible[index] = false
+          // }
         }).catch(err => {
           this.handlerNotic("连接服务器异常", 'error')
         })
@@ -157,32 +161,20 @@
       },
 
       addEquipment(index) {
-        this.$set(this.addEquipmentVisible, index, true)
-        this.$nextTick(_ => {
-          this.$refs.addEquipmentRef.$refs.input.focus();
-        });
+        request({
+          method: "get",
+          url: "/equipment/"
+        }).then(res => {
+          const {
+            data,
+            message,
+            status
+          } = res.data
+          if (status !== 200) return this.handlerNotic(message, 'error')
+          this.meetingRoomEquipment = data
+        })
+
       },
-      //   添加会议室设备的函数
-      handleAddEquipmentInputConfirm(infos) {
-        let inputValue = this.addEquipmentValue;
-        if (inputValue) {
-
-          request({
-            method: 'put',
-            url: '/meeting/' + infos.id,
-            data: infos
-          }).then(res => {
-            console.log(res);
-            this.meetingRoomLists[infos.$index].equipment_name.push({
-              'id': '',
-              'name': inputValue
-            });
-          })
-
-        }
-        this.$set(this.addEquipmentVisible, infos.$index, false)
-        this.addEquipmentValue = '';
-      }
     }
   }
 
